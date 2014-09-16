@@ -1,0 +1,11 @@
+﻿################################################################################
+# Diese .gitignore-Datei wurde von Microsoft(R) Visual Studio automatisch erstellt.
+################################################################################
+
+/FakeEF/bin/Debug
+/FakeEF/obj/Debug
+/FakeEF/packages
+/FakeEF.Tests/bin/Debug
+/FakeEF.Tests/obj/Debug
+*.suo
+*.user
