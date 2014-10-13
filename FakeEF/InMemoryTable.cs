@@ -1,8 +1,10 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Data.Entity;
 using System.Data.Entity.Infrastructure;
 using System.Linq;
+using System.Reflection;
 using Newtonsoft.Json;
 using Formatting = System.Xml.Formatting;
 
@@ -43,7 +45,8 @@ namespace FakeEF
                 if (item.State == EntityState.Added)
                 {
                     SetId(item.Entity);
-                    item.Property("Id").IsModified = false;
+                    var idName = GetIdPropertyInfo(item.Entity.GetType()).Name;
+                    item.Property(idName).IsModified = false;
                     data.Add(item.Entity);
                 }
 
@@ -67,12 +70,21 @@ namespace FakeEF
         internal object GetId(object item)
         {
             var type = item.GetType();
-            return type.GetProperty("Id").GetValue(item);
+            return GetIdPropertyInfo(type).GetValue(item);
         }
         internal void SetId(object item)
         {
             var type = item.GetType();
-            type.GetProperty("Id").SetValue(item, data.Count + 1);
+            var id = GetIdPropertyInfo(type);
+
+            if (id != null) 
+                id.SetValue(item, data.Count + 1);
+        }
+
+        private static PropertyInfo GetIdPropertyInfo(Type type)
+        {
+            return type.GetProperties().FirstOrDefault(x => x.Name.ToLower() == "id") ??
+                   type.GetProperties().FirstOrDefault(x => x.Name.ToLower().Contains("id"));
         }
 
         public override void Clear()
