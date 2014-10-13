@@ -18,7 +18,7 @@ namespace FakeEF
         private List<T> localData = new List<T>();
         private IEnumerable<T> CurrentData
         {
-            get { return contextData; }
+            get { return contextData.Concat(localData); }
         }
 
         private readonly DbContext dbContext;
@@ -46,6 +46,8 @@ namespace FakeEF
 
             InMemoryTable<T>.Instance.SaveChangesInMemory(notYetInDatabase);
             notYetInDatabase.Clear();
+
+            localData.Clear();
         }
 
         public T Add(T entity)
