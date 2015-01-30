@@ -68,13 +68,19 @@ namespace FakeEF
             var type = item.GetType();
             return GetIdPropertyInfo(type).GetValue(item);
         }
+
+        private int idCounter = 1;
         internal void SetId(object item)
         {
             var type = item.GetType();
             var id = GetIdPropertyInfo(type);
 
-            if (id != null) 
-                id.SetValue(item, data.Count + 1);
+            if (id != null)
+            {
+                id.SetValue(item, idCounter);
+            }
+
+            idCounter++;
         }
 
         private static PropertyInfo GetIdPropertyInfo(Type type)

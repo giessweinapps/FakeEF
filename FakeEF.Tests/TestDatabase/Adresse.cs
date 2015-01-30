@@ -10,5 +10,7 @@ namespace FakeEF.Tests.TestDatabase
         [Required]
         public virtual Person Person { get; set; }
 
+        public virtual Adresse SecondAdresse { get; set; }
+
     }
 }
