@@ -90,8 +90,35 @@ namespace FakeEF
 
         public T Remove(T entity)
         {
-            var entry = dbContext.Entry(entity);
-            entry.State = EntityState.Deleted;
+            foreach (var dbEntry in dbContext.ChangeTracker.Entries().ToList())
+            {
+                var entry = dbEntry.Entity;
+                foreach (var property in entry.GetType().GetProperties())
+                {
+                    var list = property.GetValue(entry) as IList;
+                    if (list != null)
+                    {
+                        if (list.Contains(entity))
+                        {
+                            list.Remove(entity);
+                        }
+                    }
+                }
+            }
+
+            if (dbContext.Entry(entity).State == EntityState.Added)
+            {
+                dbContext.Entry(entity).State = EntityState.Detached;
+            }
+            else
+            {
+                dbContext.Entry(entity).State = EntityState.Deleted;
+            }
+
+            if (localData.Contains(entity))
+            {
+                localData.Remove(entity);
+            }
             return entity;
         }
 

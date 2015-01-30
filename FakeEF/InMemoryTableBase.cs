@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace FakeEF
 {
@@ -6,7 +8,7 @@ namespace FakeEF
     {
         protected static List<InMemoryTableBase> allDatabases = new List<InMemoryTableBase>();
 
-
+        public IEnumerable<InMemoryTableBase> AllDatabases { get { return allDatabases.AsEnumerable(); } } 
 
         protected InMemoryTableBase()
         {
@@ -22,5 +24,7 @@ namespace FakeEF
         }
 
         public abstract void Clear();
+
+        public abstract IEnumerable GetData();
     }
 }

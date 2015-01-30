@@ -10,7 +10,7 @@ using Formatting = System.Xml.Formatting;
 
 namespace FakeEF
 {
-    public class InMemoryTable<T> : InMemoryTableBase, IEnumerable<T>
+    public class InMemoryTable<T> : InMemoryTableBase
         where T : class
     {
         private static readonly InMemoryTable<T> instance = new InMemoryTable<T>();
@@ -29,10 +29,6 @@ namespace FakeEF
         public IEnumerator<T> GetEnumerator()
         {
             return Instance.data.Concat(data).GetEnumerator();
-        }
-        IEnumerator IEnumerable.GetEnumerator()
-        {
-            return GetEnumerator();
         }
 
         public void SaveChangesInMemory(IEnumerable<DbEntityEntry<T>> notYetInDatabase)
@@ -90,6 +86,11 @@ namespace FakeEF
         public override void Clear()
         {
             data.Clear();
+        }
+
+        public override IEnumerable GetData()
+        {
+            return data.AsEnumerable();
         }
 
         public IEnumerable<T> CloneItems()
