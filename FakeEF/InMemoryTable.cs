@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Data.Entity;
 using System.Data.Entity.Infrastructure;
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using Newtonsoft.Json;
@@ -69,7 +70,7 @@ namespace FakeEF
             return GetIdPropertyInfo(type).GetValue(item);
         }
 
-        private int idCounter = 1;
+        private int idCounter = 0;
         internal void SetId(object item)
         {
             var type = item.GetType();
@@ -77,10 +78,9 @@ namespace FakeEF
 
             if (id != null)
             {
-                id.SetValue(item, idCounter);
+                Trace.WriteLine(string.Format("Setting Property ({0}) of {1} to {2}", id.Name, type.Name, idCounter));
+                id.SetValue(item, data.Count + 1);
             }
-
-            idCounter++;
         }
 
         private static PropertyInfo GetIdPropertyInfo(Type type)

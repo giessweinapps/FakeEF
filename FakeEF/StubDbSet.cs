@@ -100,7 +100,7 @@ namespace FakeEF
                     {
                         if (list.Contains(entity))
                         {
-                            list.Remove(entity);
+                            //list.Remove(entity);
                         }
                     }
                 }
