@@ -7,7 +7,6 @@ using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using Newtonsoft.Json;
-using Formatting = System.Xml.Formatting;
 
 namespace FakeEF
 {
@@ -16,15 +15,15 @@ namespace FakeEF
     {
         private static readonly InMemoryTable<T> instance = new InMemoryTable<T>();
         private readonly List<T> data = new List<T>();
+        private int idCounter = 1;
+
+        private InMemoryTable()
+        {
+        }
 
         public static InMemoryTable<T> Instance
         {
             get { return instance; }
-        }
-
-        private InMemoryTable()
-        {
-            
         }
 
         public IEnumerator<T> GetEnumerator()
@@ -70,7 +69,6 @@ namespace FakeEF
             return GetIdPropertyInfo(type).GetValue(item);
         }
 
-        private int idCounter = 0;
         internal void SetId(object item)
         {
             var type = item.GetType();
@@ -78,8 +76,10 @@ namespace FakeEF
 
             if (id != null)
             {
-                Trace.WriteLine(string.Format("Setting Property ({0}) of {1} to {2}", id.Name, type.Name, idCounter));
-                id.SetValue(item, data.Count + 1);
+                Trace.WriteLine(string.Format("Setting Property ({0}) of {1} to {2}", id.Name, type.Name,
+                    idCounter));
+                id.SetValue(item, idCounter);
+                idCounter ++;
             }
         }
 
@@ -92,6 +92,7 @@ namespace FakeEF
         public override void Clear()
         {
             data.Clear();
+            idCounter = 1;
         }
 
         public override IEnumerable GetData()
@@ -103,14 +104,15 @@ namespace FakeEF
         {
             return instance.data.Select(Clone);
         }
+
         public T Clone(T source)
         {
-            var serialized = JsonConvert.SerializeObject(source, Newtonsoft.Json.Formatting.Indented,
-                                new JsonSerializerSettings
-                                {
-                                    ReferenceLoopHandling = ReferenceLoopHandling.Serialize,
-                                    PreserveReferencesHandling = PreserveReferencesHandling.Objects
-                                });
+            var serialized = JsonConvert.SerializeObject(source, Formatting.Indented,
+                new JsonSerializerSettings
+                {
+                    ReferenceLoopHandling = ReferenceLoopHandling.Serialize,
+                    PreserveReferencesHandling = PreserveReferencesHandling.Objects
+                });
             return JsonConvert.DeserializeObject<T>(serialized);
         }
     }

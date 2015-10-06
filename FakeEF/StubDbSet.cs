@@ -12,7 +12,7 @@ namespace FakeEF
         void Save();
     }
 
-    public class StubDbSet<T> : IDbSet<T>, ISaveable where T : class, new()
+    public class StubDbSet<T> : DbSet<T>, IDbSet<T>, ISaveable where T : class, new()
     {
         private List<T> contextData;
         private List<T> localData = new List<T>();
@@ -21,10 +21,36 @@ namespace FakeEF
             get { return contextData.Concat(localData); }
         }
 
+        public override IEnumerable<T> AddRange(IEnumerable<T> entities)
+        {
+            foreach (var item in entities)
+            {
+                Add(item);
+            }
+            return CurrentData;
+        }
+
+        public override IEnumerable<T> RemoveRange(IEnumerable<T> entities)
+        {
+            foreach (var item in entities)
+            {
+                if (localData.Contains(item))
+                {
+                    localData.Remove(item);
+                }
+                else
+                {
+                    dbContext.Entry(item).State = EntityState.Deleted;
+                }
+            }
+            return CurrentData;
+        }
+
         private readonly DbContext dbContext;
 
         public StubDbSet(DbContext dbContext)
         {
+
             this.dbContext = dbContext;
             contextData = new List<T>(InMemoryTable<T>.Instance.CloneItems());
         }
@@ -50,15 +76,15 @@ namespace FakeEF
             localData.Clear();
         }
 
-        public T Add(T entity)
+        public override T Add(T entity)
         {
-            if(!localData.Contains(entity))
+            if (!localData.Contains(entity))
                 localData.Add(entity);
             dbContext.Entry(entity).State = EntityState.Added;
             return entity;
         }
 
-        public T Attach(T entity)
+        public override T Attach(T entity)
         {
             if (!localData.Contains(entity))
                 localData.Add(entity);
@@ -66,29 +92,29 @@ namespace FakeEF
             return entity;
         }
 
-        public TDerivedEntity Create<TDerivedEntity>() where TDerivedEntity : class, T
+        public override TDerivedEntity Create<TDerivedEntity>()
         {
             throw new NotImplementedException();
         }
 
-        public T Create()
+        public override T Create()
         {
             return new T();
         }
 
-        public T Find(params object[] keyValues)
+        public override T Find(params object[] keyValues)
         {
             var type = typeof(T);
             var idProperty = type.GetProperty("Id");
             return contextData.FirstOrDefault(x => idProperty.GetValue(x).Equals(keyValues[0]));
         }
 
-        public ObservableCollection<T> Local
+        public override ObservableCollection<T> Local
         {
             get { return new ObservableCollection<T>(localData); }
         }
 
-        public T Remove(T entity)
+        public override T Remove(T entity)
         {
             foreach (var dbEntry in dbContext.ChangeTracker.Entries().ToList())
             {
@@ -127,15 +153,11 @@ namespace FakeEF
             return CurrentData.GetEnumerator();
         }
 
-        IEnumerator IEnumerable.GetEnumerator()
-        {
-            return CurrentData.GetEnumerator();
-        }
-
         public Type ElementType
         {
             get { return CurrentData.AsQueryable().ElementType; }
         }
+
 
         public System.Linq.Expressions.Expression Expression
         {
