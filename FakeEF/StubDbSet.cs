@@ -20,7 +20,7 @@ namespace FakeEF
         {
             get { return contextData.Concat(localData); }
         }
-
+        
         public override IEnumerable<T> AddRange(IEnumerable<T> entities)
         {
             foreach (var item in entities)

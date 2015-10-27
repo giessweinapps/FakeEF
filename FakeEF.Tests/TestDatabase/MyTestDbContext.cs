@@ -4,7 +4,7 @@ namespace FakeEF.Tests.TestDatabase
 {
     public class MyTestDbContext : DbContext
     {
-        public virtual IDbSet<Person> Persons { get; set; }
-        public virtual IDbSet<Adresse> Adresses { get; set; }
+        public virtual DbSet<Person> Persons { get; set; }
+        public virtual DbSet<Adresse> Adresses { get; set; }
     }
 }

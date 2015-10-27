@@ -15,6 +15,21 @@ namespace FakeEF.Tests
             Database.SetInitializer<T>(null);
 
             var allSaveables = new List<ISaveable>();
+            foreach (var property in typeof (T).GetProperties())
+            {
+                if (property.PropertyType.IsGenericType &&
+                    (property.PropertyType.GetGenericTypeDefinition() == typeof(IDbSet<>) ||
+                    property.PropertyType.GetGenericTypeDefinition() == typeof(DbSet<>)))
+                {
+                    var argument = property.PropertyType.GetGenericArguments();
+                    var genericClass = typeof (StubDbSet<>).MakeGenericType(argument);
+                    var stubDbSet = (ISaveable) Activator.CreateInstance(genericClass, context);
+                    allSaveables.Add(stubDbSet);
+
+                    property.SetValue(context, stubDbSet);
+                }
+            }
+
             ((IObjectContextAdapter)context).ObjectContext.SavingChanges += (o, e) =>
             {
                 var validationErrors = context.GetValidationErrors().ToList();
@@ -27,19 +42,6 @@ namespace FakeEF.Tests
                 ((IObjectContextAdapter)context).ObjectContext.AcceptAllChanges();
             };
 
-            foreach (var property in typeof (T).GetProperties())
-            {
-                if (property.PropertyType.IsGenericType &&
-                    property.PropertyType.GetGenericTypeDefinition() == typeof (IDbSet<>))
-                {
-                    var argument = property.PropertyType.GetGenericArguments();
-                    var genericClass = typeof (StubDbSet<>).MakeGenericType(argument);
-                    var stubDbSet = (ISaveable) Activator.CreateInstance(genericClass, context);
-                    allSaveables.Add(stubDbSet);
-
-                    property.SetValue(context, stubDbSet);
-                }
-            }
         }
     }
 }
