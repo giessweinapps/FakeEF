@@ -135,7 +135,6 @@ namespace FakeEF.Tests
         }
 
         [Test]
-        [ExpectedException(typeof(DbEntityValidationException))]
         public void AddItemWithRequiredParentAndExpectException()
         {
             using (var ctx = new MyTestDbContext())
@@ -146,7 +145,7 @@ namespace FakeEF.Tests
                     Name = "test",
                     Person = null //Das dar nicht sein!
                 });
-                ctx.SaveChanges();
+                Assert.Throws<DbEntityValidationException>(() => ctx.SaveChanges());
             }
         }
 
