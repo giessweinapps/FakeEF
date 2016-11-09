@@ -3,6 +3,8 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Data.Entity;
+using System.Data.Entity.Core.Objects;
+using System.Data.Entity.Infrastructure;
 using System.Linq;
 
 namespace FakeEF
@@ -14,13 +16,25 @@ namespace FakeEF
 
     public class StubDbSet<T> : DbSet<T>, IDbSet<T>, ISaveable where T : class, new()
     {
+        private readonly List<string> includes;
         private List<T> contextData;
-        private List<T> localData = new List<T>();
+        private readonly List<T> localData = new List<T>();
         private IEnumerable<T> CurrentData
         {
-            get { return contextData.Concat(localData); }
+            get
+            {
+                return contextData.Concat(localData);
+            }
         }
-        
+
+        private void LoadContextData()
+        {
+            if (contextData != null)
+                return;
+
+            contextData = new List<T>(InMemoryTable<T>.Instance.CloneItems(dbContext.Configuration.ProxyCreationEnabled, includes));
+        }
+
         public override IEnumerable<T> AddRange(IEnumerable<T> entities)
         {
             foreach (var item in entities)
@@ -48,11 +62,16 @@ namespace FakeEF
 
         private readonly DbContext dbContext;
 
-        public StubDbSet(DbContext dbContext)
+        public StubDbSet(DbContext dbContext) 
+            : this(dbContext, new List<string>())
         {
+        }
 
+        public StubDbSet(DbContext dbContext, List<string> includes)
+        {
+            this.includes = includes;
             this.dbContext = dbContext;
-            contextData = new List<T>(InMemoryTable<T>.Instance.CloneItems());
+            LoadContextData();
         }
 
         public void Save()
@@ -167,6 +186,12 @@ namespace FakeEF
         public IQueryProvider Provider
         {
             get { return CurrentData.AsQueryable().Provider; }
+        }
+
+        public override DbQuery<T> Include(string path)
+        {
+            includes.Add(path);
+            return new StubDbSet<T>(dbContext, includes);
         }
     }
 }

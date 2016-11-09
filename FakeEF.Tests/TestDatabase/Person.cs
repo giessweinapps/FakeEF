@@ -14,5 +14,6 @@ namespace FakeEF.Tests.TestDatabase
         [Required]
         public string Name { get; set; }
         public virtual ICollection<Adresse> Addresses { get; set; }
+        public virtual Person ChildPerson { get; set; }
     }
 }

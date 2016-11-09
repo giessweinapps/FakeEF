@@ -13,7 +13,6 @@ namespace FakeEF.Tests
         public static void SetupAsTestDbContext<T>(this T context) where T : DbContext
         {
             Database.SetInitializer<T>(null);
-
             var allSaveables = new List<ISaveable>();
             foreach (var property in typeof (T).GetProperties())
             {

@@ -7,6 +7,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Serialization;
 
 namespace FakeEF
 {
@@ -51,9 +52,9 @@ namespace FakeEF
                     var id = GetId(item.Entity);
                     var existing = data.FirstOrDefault(x => GetId(x).Equals(id));
 
-                    foreach (var property in typeof (T).GetProperties())
+                    foreach (var property in typeof(T).GetProperties())
                     {
-                        if (property.PropertyType.IsPrimitive || property.PropertyType == typeof (string))
+                        if (property.PropertyType.IsPrimitive || property.PropertyType == typeof(string))
                         {
                             var newValue = property.GetValue(item.Entity);
                             property.SetValue(existing, newValue);
@@ -79,7 +80,7 @@ namespace FakeEF
                 Trace.WriteLine(string.Format("Setting Property ({0}) of {1} to {2}", id.Name, type.Name,
                     idCounter));
                 id.SetValue(item, idCounter);
-                idCounter ++;
+                idCounter++;
             }
         }
 
@@ -100,20 +101,62 @@ namespace FakeEF
             return data.AsEnumerable();
         }
 
-        public IEnumerable<T> CloneItems()
+        public IEnumerable<T> CloneItems(bool withProxy, List<string> includes)
         {
-            return instance.data.Select(Clone);
+            return instance.data.Select(x => Clone(x, withProxy, includes)).ToList();
         }
 
-        public T Clone(T source)
+        public T Clone(T source, bool withProxy, List<string> includes)
         {
-            var serialized = JsonConvert.SerializeObject(source, Formatting.Indented,
-                new JsonSerializerSettings
-                {
-                    ReferenceLoopHandling = ReferenceLoopHandling.Serialize,
-                    PreserveReferencesHandling = PreserveReferencesHandling.Objects
-                });
-            return JsonConvert.DeserializeObject<T>(serialized);
+            if (withProxy)
+            {
+                var serialized = JsonConvert.SerializeObject(source, Formatting.Indented,
+                    new JsonSerializerSettings
+                    {
+                        ReferenceLoopHandling = ReferenceLoopHandling.Serialize,
+                        PreserveReferencesHandling = PreserveReferencesHandling.Objects
+                    });
+                return JsonConvert.DeserializeObject<T>(serialized);
+            }
+            else
+            {
+                var serialized = JsonConvert.SerializeObject(source, Formatting.Indented,
+                    new JsonSerializerSettings
+                    {
+                        ReferenceLoopHandling = ReferenceLoopHandling.Serialize,
+                        PreserveReferencesHandling = PreserveReferencesHandling.Objects,
+                        ContractResolver = new NonProxyContractResolver(includes)
+                    });
+                return JsonConvert.DeserializeObject<T>(serialized);
+            }
+        }
+    }
+
+    public class NonProxyContractResolver : DefaultContractResolver
+    {
+        private readonly List<string> includes;
+
+        public NonProxyContractResolver(List<string> includes)
+        {
+            this.includes = includes;
+        }
+
+        protected override IList<JsonProperty> CreateProperties(Type type, MemberSerialization memberSerialization)
+        {
+            var properties = base.CreateProperties(type, memberSerialization).Where(x => FilterProperty(x)).ToArray();
+            return properties;
+        }
+
+        private bool FilterProperty(JsonProperty jsonProperty)
+        {
+            if ((jsonProperty.PropertyType.IsClass || jsonProperty.PropertyType.IsInterface) && 
+                jsonProperty.PropertyType != typeof(string))
+            {
+                if (includes.Any(y => y.Contains(jsonProperty.PropertyName)))
+                    return true;
+                return false;
+            }
+            return true;
         }
     }
 }

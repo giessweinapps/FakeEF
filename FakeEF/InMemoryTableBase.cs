@@ -7,7 +7,6 @@ namespace FakeEF
 {
     public abstract class InMemoryTableBase
     {
-        [ThreadStatic]
         protected static List<InMemoryTableBase> allDatabases = new List<InMemoryTableBase>();
 
         public IEnumerable<InMemoryTableBase> AllDatabases { get { return allDatabases.AsEnumerable(); } } 

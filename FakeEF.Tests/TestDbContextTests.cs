@@ -1,7 +1,11 @@
+using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.Data.Entity;
 using System.Data.Entity.Validation;
 using System.Diagnostics;
 using System.Linq;
+using System.Reflection;
 using FakeEF.Tests.TestDatabase;
 using NUnit.Framework;
 
@@ -14,6 +18,180 @@ namespace FakeEF.Tests
         public void Setup()
         {
             InMemoryTableBase.ClearAll();
+        }
+
+        [Test]
+        public void QueryNestedPropertyWithProxy()
+        {
+            using (var ctx = new MyTestDbContext())
+            {
+                ctx.SetupAsTestDbContext();
+
+                var p1 = new Person { Name = "Hallo" };
+                p1.Addresses.Add(new Adresse()
+                {
+                    Name = "Myaddress"
+                });
+                ctx.Persons.Add(p1);
+                ctx.SaveChanges();
+            }
+
+            using (var ctx = new MyTestDbContext())
+            {
+                ctx.SetupAsTestDbContext();
+                var p = ctx.Persons.FirstOrDefault();
+                Assert.That(p.Addresses.Count, Is.EqualTo(1));
+            }
+        }
+
+        [Test]
+        public void QueryNestedPropertyWithNoProxy()
+        {
+            using (var ctx = new MyTestDbContext())
+            {
+                ctx.SetupAsTestDbContext();
+
+                var p1 = new Person { Name = "Hallo" };
+                p1.Addresses.Add(new Adresse()
+                {
+                    Name = "Myaddress"
+                });
+                ctx.Persons.Add(p1);
+                ctx.SaveChanges();
+            }
+
+            using (var ctx = new MyTestDbContext())
+            {
+                ctx.Configuration.ProxyCreationEnabled = false;
+                ctx.SetupAsTestDbContext();
+                var p = ctx.Persons.FirstOrDefault();
+                Assert.That(p.Addresses.Count, Is.EqualTo(0));
+            }
+        }
+
+
+        [Test]
+        public void QueryNoProxyEnsureId()
+        {
+            int id = 0;
+            using (var ctx = new MyTestDbContext())
+            {
+                ctx.SetupAsTestDbContext();
+
+                var p1 = new Person { Name = "Hallo" };
+                p1.Addresses.Add(new Adresse()
+                {
+                    Name = "Myaddress"
+                });
+                ctx.Persons.Add(p1);
+                ctx.SaveChanges();
+                id = p1.Addresses.FirstOrDefault().Id;
+            }
+
+            using (var ctx = new MyTestDbContext())
+            {
+                ctx.Configuration.ProxyCreationEnabled = false;
+                ctx.SetupAsTestDbContext();
+                var p = ctx.Persons.Include(x => x.Addresses).FirstOrDefault();
+                Assert.That(p.Addresses.FirstOrDefault().Id, Is.EqualTo(id));
+            }
+        }
+
+        [Test]
+        public void QueryNestedPropertyWithNoProxyAndInclude()
+        {
+            using (var ctx = new MyTestDbContext())
+            {
+                ctx.SetupAsTestDbContext();
+
+                var p1 = new Person { Name = "Hallo" };
+                p1.Addresses.Add(new Adresse()
+                {
+                    Name = "Myaddress"
+                });
+                ctx.Persons.Add(p1);
+                ctx.SaveChanges();
+            }
+
+            using (var ctx = new MyTestDbContext())
+            {
+                ctx.Configuration.ProxyCreationEnabled = false;
+                ctx.SetupAsTestDbContext();
+
+                var p = ctx.Persons.Include(x => x.Addresses).FirstOrDefault();
+                Assert.That(p.Addresses.Count, Is.EqualTo(1));
+            }
+        }
+        [Test]
+        public void QueryNestedPropertyWithNoProxyAndIncludeOneLevel()
+        {
+            using (var ctx = new MyTestDbContext())
+            {
+                ctx.SetupAsTestDbContext();
+
+                var p1 = new Person
+                {
+                    Name = "Hallo1",
+                    ChildPerson = new Person
+                    {
+                        Name = "Hallo2",
+                        ChildPerson = new Person
+                        {
+                            Name = "Hallo3"
+                        }
+                    }
+                };
+                ctx.Persons.Add(p1);
+                ctx.SaveChanges();
+            }
+
+            using (var ctx = new MyTestDbContext())
+            {
+                ctx.Configuration.ProxyCreationEnabled = false;
+                ctx.SetupAsTestDbContext();
+
+                var p = ctx.Persons.Include(x => x.ChildPerson).FirstOrDefault();
+                Assert.That(p.ChildPerson, Is.Not.Null);
+            }
+        }
+        [Test]
+        public void QueryNestedPropertyWithNoProxyAndIncludeTwoLevel()
+        {
+            using (var ctx = new MyTestDbContext())
+            {
+                ctx.SetupAsTestDbContext();
+
+                var p1 = new Person
+                {
+                    Name = "Hallo1",
+                    ChildPerson = new Person
+                    {
+                        Name = "Hallo2",
+                        Addresses = new List<Adresse>()
+                        {
+                          new Adresse()
+                          {
+                              Name = "Adr"
+                          }  
+                        },
+                        ChildPerson = new Person
+                        {
+                            Name = "Hallo3"
+                        }
+                    }
+                };
+                ctx.Persons.Add(p1);
+                ctx.SaveChanges();
+            }
+
+            using (var ctx = new MyTestDbContext())
+            {
+                ctx.Configuration.ProxyCreationEnabled = false;
+                ctx.SetupAsTestDbContext();
+
+                var p = ctx.Persons.Include(x => x.ChildPerson.Addresses).FirstOrDefault();
+                Assert.That(p.ChildPerson.Addresses.Count, Is.EqualTo(1));
+            }
         }
 
         [Test]
@@ -160,7 +338,7 @@ namespace FakeEF.Tests
                     Name = "Eintrag"
                 };
 
-                foreach(var adr in Enumerable.Range(0, 10).Select(x => new Adresse {Name = x.ToString()}))
+                foreach (var adr in Enumerable.Range(0, 10).Select(x => new Adresse { Name = x.ToString() }))
                     person.Addresses.Add(adr);
 
                 ctx.Persons.Add(person);
