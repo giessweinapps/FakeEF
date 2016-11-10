@@ -6,5 +6,11 @@ namespace FakeEF.Tests.TestDatabase
     {
         public virtual DbSet<Person> Persons { get; set; }
         public virtual DbSet<Adresse> Adresses { get; set; }
+        public virtual DbSet<TestData> TestData { get; set; }
+    }
+
+    public class TestData
+    {
+        public int Id { get; internal set; }
     }
 }

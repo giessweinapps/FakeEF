@@ -5,9 +5,9 @@ using System.Data.Entity.Infrastructure;
 using System.Data.Entity.Validation;
 using System.Linq;
 
-namespace FakeEF.Tests
+namespace FakeEF.EFInterception
 {
-    public static class DbExtensions
+    public static class DbMethodExtensions
     {
         
         public static void SetupAsTestDbContext<T>(this T context) where T : DbContext

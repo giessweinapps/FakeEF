@@ -6,6 +6,8 @@ using System.Data.Entity.Validation;
 using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
+using FakeEF.Data;
+using FakeEF.EFInterception;
 using FakeEF.Tests.TestDatabase;
 using NUnit.Framework;
 
@@ -17,7 +19,7 @@ namespace FakeEF.Tests
         [SetUp]
         public void Setup()
         {
-            InMemoryTableBase.ClearAll();
+            InMemoryDatabase.Instance.Clear();
         }
 
         [Test]
@@ -66,6 +68,52 @@ namespace FakeEF.Tests
                 ctx.SetupAsTestDbContext();
                 var p = ctx.Persons.FirstOrDefault();
                 Assert.That(p.Addresses.Count, Is.EqualTo(0));
+            }
+        }
+
+        [Test]
+        public void SetInternalProperty()
+        {
+            using (var ctx = new MyTestDbContext())
+            {
+                ctx.SetupAsTestDbContext();
+                ctx.TestData.Add(new TestData());
+                ctx.SaveChanges();
+            }
+
+            using (var ctx = new MyTestDbContext())
+            {
+                ctx.SetupAsTestDbContext();
+                var p = ctx.TestData.FirstOrDefault();
+                Assert.That(p.Id, Is.EqualTo(1));
+            }
+        }
+        [Test]
+        public void ChangePropertyAndSave()
+        {
+            using (var ctx = new MyTestDbContext())
+            {
+                ctx.SetupAsTestDbContext();
+                ctx.Persons.Add(new Person()
+                {
+                    Name = "Name"
+                });
+                ctx.SaveChanges();
+            }
+
+            using (var ctx = new MyTestDbContext())
+            {
+                ctx.SetupAsTestDbContext();
+                var p = ctx.Persons.FirstOrDefault();
+                p.Name = p.Name.ToUpper();
+                ctx.SaveChanges();
+            }
+
+            using (var ctx = new MyTestDbContext())
+            {
+                ctx.SetupAsTestDbContext();
+                var p = ctx.Persons.FirstOrDefault();
+                Assert.That(p.Name, Is.EqualTo("NAME"));
             }
         }
 
@@ -324,6 +372,48 @@ namespace FakeEF.Tests
                     Person = null //Das dar nicht sein!
                 });
                 Assert.Throws<DbEntityValidationException>(() => ctx.SaveChanges());
+            }
+        }
+
+        [Test]
+        public void AsNoTrackingDifferentInstances()
+        {
+            using (var ctx = new MyTestDbContext())
+            {
+                ctx.SetupAsTestDbContext();
+                var p1 = new Person { Name = "Jürgen" };
+                ctx.Persons.Add(p1);
+                ctx.SaveChanges();
+            }
+            using (var ctx = new MyTestDbContext())
+            {
+                ctx.Configuration.ProxyCreationEnabled = false;
+                ctx.SetupAsTestDbContext();
+
+                var p1 = ctx.Persons.AsNoTracking().FirstOrDefault();
+                var p2 = ctx.Persons.AsNoTracking().FirstOrDefault();
+                Assert.That(p1 != p2);
+            }
+        }
+
+        [Test]
+        public void SameInstancesInContext()
+        {
+            using (var ctx = new MyTestDbContext())
+            {
+                ctx.SetupAsTestDbContext();
+                var p1 = new Person { Name = "Jürgen" };
+                ctx.Persons.Add(p1);
+                ctx.SaveChanges();
+            }
+            using (var ctx = new MyTestDbContext())
+            {
+                ctx.Configuration.ProxyCreationEnabled = false;
+                ctx.SetupAsTestDbContext();
+
+                var p1 = ctx.Persons.FirstOrDefault();
+                var p2 = ctx.Persons.FirstOrDefault();
+                Assert.That(p1 == p2);
             }
         }
 

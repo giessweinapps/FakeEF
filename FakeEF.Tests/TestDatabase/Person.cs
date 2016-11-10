@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel.DataAnnotations;
+using Newtonsoft.Json;
 
 namespace FakeEF.Tests.TestDatabase
 {
@@ -10,7 +11,9 @@ namespace FakeEF.Tests.TestDatabase
         {
             Addresses = new Collection<Adresse>();
         }
-        public int Id { get; set; }
+        [JsonIgnore]
+        public int Id { get; internal set; }
+        internal int TestProperty { get; set; }
         [Required]
         public string Name { get; set; }
         public virtual ICollection<Adresse> Addresses { get; set; }
