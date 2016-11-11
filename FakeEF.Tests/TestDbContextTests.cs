@@ -72,6 +72,39 @@ namespace FakeEF.Tests
         }
 
         [Test]
+        public void AddPersonWithAddressesSelectMany()
+        {
+            using (var ctx = new MyTestDbContext())
+            {
+                ctx.SetupAsTestDbContext();
+
+                var p1 = new Person { Name = "Hallo" };
+                for (int i = 0; i < 3; i++)
+                {
+                    p1.Addresses.Add(new Adresse()
+                    {
+                        Name = "Myaddress" + i
+                    });
+                }
+                ctx.Persons.Add(p1);
+                ctx.SaveChanges();
+            }
+
+            using (var ctx = new MyTestDbContext())
+            {
+                ctx.Configuration.ProxyCreationEnabled = false;
+                ctx.SetupAsTestDbContext();
+                var adr = ctx.Persons
+                    .AsNoTracking()
+                    .Where(x => x.Id > 0)
+                    .Where(x => x.Id < 1000)
+                    .SelectMany(x => x.Addresses)
+                    .FirstOrDefault(x => x.Id == 2);
+                Assert.That(adr, Is.Not.Null);
+            }
+        }
+
+        [Test]
         public void SetInternalProperty()
         {
             using (var ctx = new MyTestDbContext())

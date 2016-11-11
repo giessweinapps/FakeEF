@@ -1,68 +1,22 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Data.Entity;
 using System.Data.Entity.Infrastructure;
 using System.Linq;
+using System.Linq.Expressions;
 using FakeEF.Data;
 
 namespace FakeEF.EFInterception
 {
     public class StubDbSet<T> : DbSet<T>, IDbSet<T>, ISaveable where T : class, new()
     {
+        private readonly DbContext dbContext;
         private readonly List<string> includes;
         private readonly List<T> localData = new List<T>();
-        private IEnumerable<T> CurrentData
-        {
-            get
-            {
-                LoadContextData();
-                var data = LoadContextData().Concat(localData).ToArray();
-                return data;
-            }
-        }
-
-        public override DbQuery<T> AsNoTracking()
-        {
-            asNoTracking = true;
-            return base.AsNoTracking();
-        }
-
-        private IEnumerable<T> LoadContextData()
-        {
-            return InMemoryDatabase.Instance.LoadData<T>(dbContext, dbContext.Configuration.ProxyCreationEnabled, includes, asNoTracking);
-        }
-
-        public override IEnumerable<T> AddRange(IEnumerable<T> entities)
-        {
-            foreach (var item in entities)
-            {
-                Add(item);
-            }
-            return CurrentData;
-        }
-
-        public override IEnumerable<T> RemoveRange(IEnumerable<T> entities)
-        {
-            foreach (var item in entities)
-            {
-                if (localData.Contains(item))
-                {
-                    localData.Remove(item);
-                }
-                else
-                {
-                    dbContext.Entry(item).State = EntityState.Deleted;
-                }
-            }
-            return CurrentData;
-        }
-
-        private readonly DbContext dbContext;
         private bool asNoTracking;
 
-        public StubDbSet(DbContext dbContext) 
+        public StubDbSet(DbContext dbContext)
             : this(dbContext, new List<string>())
         {
         }
@@ -71,22 +25,16 @@ namespace FakeEF.EFInterception
         {
             this.includes = includes;
             this.dbContext = dbContext;
+            Provider = new FakeEfQueryProvider<T>(this, dbContext);
         }
 
-        public void Save()
+        internal IEnumerable<T> CurrentData
         {
-            var notYetInDatabase = dbContext.ChangeTracker
-                .Entries()
-                .Where(x => x.State != EntityState.Unchanged && x.Entity is T)
-                .ToList();
-            if (notYetInDatabase.Any())
+            get
             {
-                InMemoryDatabase.Instance.SaveChangesInMemory(notYetInDatabase);
+                var data = LoadContextData().Concat(localData);
+                return data;
             }
-            notYetInDatabase.Clear();
-
-            localData.Clear();
-            LoadContextData();
         }
 
         public override T Add(T entity)
@@ -119,7 +67,6 @@ namespace FakeEF.EFInterception
         {
             var type = typeof(T);
             var idProperty = type.GetProperty("Id");
-            LoadContextData();
             return LoadContextData().FirstOrDefault(x => idProperty.GetValue(x).Equals(keyValues[0]));
         }
 
@@ -148,17 +95,76 @@ namespace FakeEF.EFInterception
             return CurrentData.GetEnumerator();
         }
 
-        public Type ElementType => CurrentData.AsQueryable().ElementType;
+        public Type ElementType { get; } = typeof(T);
 
+        public Expression Expression => Expression.Constant(CurrentData.AsQueryable());
 
-        public System.Linq.Expressions.Expression Expression => CurrentData.AsQueryable().Expression;
+        public IQueryProvider Provider { get; }
 
-        public IQueryProvider Provider => CurrentData.AsQueryable().Provider;
+        public void Save()
+        {
+            var notYetInDatabase = dbContext.ChangeTracker
+                .Entries()
+                .Where(x => x.State != EntityState.Unchanged && x.Entity is T)
+                .ToList();
+            if (notYetInDatabase.Any())
+            {
+                InMemoryDatabase.Instance.SaveChangesInMemory(notYetInDatabase);
+            }
+            notYetInDatabase.Clear();
+
+            localData.Clear();
+        }
+
+        public override DbQuery<T> AsNoTracking()
+        {
+            asNoTracking = true;
+            return this;
+        }
+
+        private IEnumerable<T> LoadContextData()
+        {
+            return InMemoryDatabase.Instance.LoadData<T>(dbContext, dbContext.Configuration.ProxyCreationEnabled,
+                includes, asNoTracking);
+        }
+
+        public override IEnumerable<T> AddRange(IEnumerable<T> entities)
+        {
+            foreach (var item in entities)
+            {
+                Add(item);
+            }
+            return CurrentData;
+        }
+
+        public override IEnumerable<T> RemoveRange(IEnumerable<T> entities)
+        {
+            foreach (var item in entities)
+            {
+                if (localData.Contains(item))
+                {
+                    localData.Remove(item);
+                }
+                else
+                {
+                    dbContext.Entry(item).State = EntityState.Deleted;
+                }
+            }
+            return CurrentData;
+        }
 
         public override DbQuery<T> Include(string path)
         {
             includes.Add(path);
             return new StubDbSet<T>(dbContext, includes);
+        }
+
+        public void AddInclude(string includeToAdd)
+        {
+            if (!includes.Contains(includeToAdd))
+            {
+                includes.Add(includeToAdd);
+            }
         }
     }
 }

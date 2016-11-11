@@ -66,7 +66,8 @@ namespace FakeEF.Data
         {
             var manager = GetSetData(typeof(T));
             var data = CloneItems<T>(context, manager, proxyCreationEnabled, includes, asNoTracking);
-            return data.ToArray();
+            foreach (var item in data)
+                yield return item;
         }
 
 

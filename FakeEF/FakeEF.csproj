@@ -55,6 +55,7 @@
     <Compile Include="Data\InMemoryDatabase.cs" />
     <Compile Include="Data\KeyDataItem.cs" />
     <Compile Include="Data\DbSetDataManager.cs" />
+    <Compile Include="EFInterception\FakeEfQueryProvider.cs" />
     <Compile Include="EFInterception\ISaveable.cs" />
     <Compile Include="DataHandling\FakeEFJsonContractResolver.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
 	<metadata>
 		<id>FakeEF</id>
-		<version>1.0.33.0</version>
+		<version>1.0.35.0</version>
 		<title>FakeEF</title>
 		<authors>Giesswein Software-Solutions</authors>
 		<owners>Giesswein Software-Solutions</owners>
