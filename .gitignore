@@ -10,3 +10,4 @@
 *.suo
 *.user
 /packages
+/FakeEF/*.nupkg

@@ -47,6 +47,57 @@ namespace FakeEF.Tests
         }
 
         [Test]
+        public void QueryTwoDifferentTables()
+        {
+            using (var ctx = new MyTestDbContext())
+            {
+                ctx.SetupAsTestDbContext();
+
+                var p1 = new Person { Name = "Hallo" };
+                p1.Addresses.Add(new Adresse()
+                {
+                    Name = "Myaddress"
+                });
+                ctx.Persons.Add(p1);
+                ctx.SaveChanges();
+            }
+
+            using (var ctx = new MyTestDbContext())
+            {
+                ctx.SetupAsTestDbContext();
+                var p = ctx.Persons.FirstOrDefault();
+                var adr = ctx.Adresses.FirstOrDefault();
+                Assert.That(p.Addresses.First() == adr);
+            }
+        }
+        [Test]
+        public void FirstOrDefaultNestedProperty()
+        {
+            using (var ctx = new MyTestDbContext())
+            {
+                ctx.SetupAsTestDbContext();
+
+                ctx.TestData.Add(new TestData()
+                {
+                    NestedData = new TestData()
+                    {
+                        Number = 42
+                    }
+                });
+                ctx.SaveChanges();
+            }
+
+            using (var ctx = new MyTestDbContext())
+            {
+                ctx.Configuration.ProxyCreationEnabled = false;
+                ctx.SetupAsTestDbContext();
+                var data = ctx.TestData.FirstOrDefault(x => x.NestedData.Number == 42);
+                Assert.That(data, Is.Not.Null);
+            }
+        }
+
+
+        [Test]
         public void QueryNestedPropertyWithNoProxy()
         {
             using (var ctx = new MyTestDbContext())

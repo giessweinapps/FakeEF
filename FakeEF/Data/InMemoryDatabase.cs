@@ -3,9 +3,13 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Data.Entity;
 using System.Data.Entity.Infrastructure;
+using System.IO;
 using System.Linq;
+using System.Runtime.Serialization.Formatters.Binary;
+
 using FakeEF.DataHandling;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Bson;
 
 namespace FakeEF.Data
 {
@@ -92,10 +96,10 @@ namespace FakeEF.Data
                     if (!proxyCreationEnabled)
                     {
                         var navigationProperties = item.Value.GetType()
-                                    .GetProperties()
-                                    .Where(x => (x.PropertyType.IsClass ||
-                                                 x.PropertyType.IsInterface) && x.PropertyType != typeof(string))
-                                    .ToList();
+                            .GetProperties()
+                            .Where(x => (x.PropertyType.IsClass ||
+                                         x.PropertyType.IsInterface) && x.PropertyType != typeof(string))
+                            .ToList();
                         foreach (var nav in navigationProperties)
                         {
                             if (includes.Any(x => x.Contains(nav.Name)))
@@ -109,6 +113,23 @@ namespace FakeEF.Data
                             }
                             else
                                 nav.SetValue(item.Value, null);
+                        }
+                    }
+                    else
+                    {
+                        var navigationProperties = item.Value.GetType()
+                                    .GetProperties()
+                                    .Where(x => (x.PropertyType.IsClass ||
+                                                    x.PropertyType.IsInterface) && x.PropertyType != typeof(string))
+                                    .ToList();
+                        foreach (var navProperty in navigationProperties)
+                        {
+                            var alreadyLoaded = context.ChangeTracker.Entries().FirstOrDefault(x => x.Entity.GetType() == navProperty.PropertyType &&
+                                                                                manager.GetId(x.Entity).Equals(item.Key));
+                            if (alreadyLoaded != null)
+                            {
+                                navProperty.SetValue(item.Value, alreadyLoaded.Entity);
+                            }
                         }
                     }
 
@@ -154,8 +175,10 @@ namespace FakeEF.Data
                     PreserveReferencesHandling = PreserveReferencesHandling.Objects,
                     ContractResolver = new FakeEFJsonContractResolver(true, includes)
                 };
-                var serialized = JsonConvert.SerializeObject(source, Formatting.Indented, settings);
-                return JsonConvert.DeserializeObject<T>(serialized, settings);
+                
+                var serialized = JsonConvert.SerializeObject(source, Formatting.None, settings);
+                var result = JsonConvert.DeserializeObject<T>(serialized, settings);
+                return result;
             }
             else
             {
@@ -165,7 +188,7 @@ namespace FakeEF.Data
                     PreserveReferencesHandling = PreserveReferencesHandling.Objects,
                     ContractResolver = new FakeEFJsonContractResolver(false, includes)
                 };
-                var serialized = JsonConvert.SerializeObject(source, Formatting.Indented, settings);
+                var serialized = JsonConvert.SerializeObject(source, Formatting.None, settings);
                 return JsonConvert.DeserializeObject<T>(serialized, settings);
             }
         }

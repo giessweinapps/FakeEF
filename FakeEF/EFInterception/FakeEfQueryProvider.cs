@@ -1,4 +1,5 @@
-﻿using System.Data.Entity;
+﻿using System;
+using System.Data.Entity;
 using System.Linq;
 using System.Linq.Expressions;
 using FakeEF.Data;
@@ -51,6 +52,40 @@ namespace FakeEF.EFInterception
 
         public TResult Execute<TResult>(Expression expression)
         {
+            var method = expression as MethodCallExpression;
+            if (method != null && method.Method.Name == "FirstOrDefault")
+            {
+                foreach (var arg in method.Arguments.Skip(1))
+                {
+                    var unaryExpression = arg as UnaryExpression;
+                    var operand = unaryExpression?.Operand as LambdaExpression;
+                    var member = operand?.Body as BinaryExpression;
+                    if (member?.Left.NodeType == ExpressionType.Convert)
+                    {
+                        var unary = ((UnaryExpression)member.Left);
+                        var memberExpression = unary.Operand as MemberExpression;
+                        var ex = memberExpression?.Expression as MemberExpression;
+                        if (ex?.Member.Name != null)
+                        {
+                            stubDbSet.AddInclude(ex.Member.Name);
+                        }
+                        else if (memberExpression?.Member.Name != null)
+                        {
+                            stubDbSet.AddInclude(memberExpression.Member.Name);
+                        }
+                    }
+                    else
+                    {
+                        var leftMemberExpression = member?.Left as MemberExpression;
+                        var accessedMember = leftMemberExpression?.Expression as MemberExpression;
+
+                        if (accessedMember != null)
+                        {
+                            stubDbSet.AddInclude(accessedMember.Member.Name);
+                        }
+                    }
+                }
+            }
             return stubDbSet.CurrentData.AsQueryable().Provider.Execute<TResult>(expression);
         }
     }

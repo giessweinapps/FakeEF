@@ -12,5 +12,7 @@ namespace FakeEF.Tests.TestDatabase
     public class TestData
     {
         public int Id { get; internal set; }
+        public TestData NestedData { get; set; }
+        public int Number { get; set; }
     }
 }
