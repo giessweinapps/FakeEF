@@ -40,7 +40,10 @@ namespace FakeEF.EFInterception
         public override T Add(T entity)
         {
             if (!localData.Contains(entity))
+            {
                 localData.Add(entity);
+            }
+
             dbContext.Entry(entity).State = EntityState.Added;
             return entity;
         }
@@ -48,7 +51,10 @@ namespace FakeEF.EFInterception
         public override T Attach(T entity)
         {
             if (!localData.Contains(entity))
+            {
                 localData.Add(entity);
+            }
+
             dbContext.Entry(entity).State = EntityState.Modified;
             return entity;
         }
@@ -74,19 +80,13 @@ namespace FakeEF.EFInterception
 
         public override T Remove(T entity)
         {
-            if (dbContext.Entry(entity).State == EntityState.Added)
-            {
-                dbContext.Entry(entity).State = EntityState.Detached;
-            }
-            else
-            {
-                dbContext.Entry(entity).State = EntityState.Deleted;
-            }
+            dbContext.Entry(entity).State = dbContext.Entry(entity).State == EntityState.Added ? EntityState.Detached : EntityState.Deleted;
 
             if (localData.Contains(entity))
             {
                 localData.Remove(entity);
             }
+
             return entity;
         }
 
@@ -96,9 +96,7 @@ namespace FakeEF.EFInterception
         }
 
         public Type ElementType { get; } = typeof(T);
-
         public Expression Expression => Expression.Constant(CurrentData.AsQueryable());
-
         public IQueryProvider Provider { get; }
 
         public void Save()
@@ -111,6 +109,7 @@ namespace FakeEF.EFInterception
             {
                 InMemoryDatabase.Instance.SaveChangesInMemory(notYetInDatabase);
             }
+
             notYetInDatabase.Clear();
 
             localData.Clear();
@@ -134,6 +133,7 @@ namespace FakeEF.EFInterception
             {
                 Add(item);
             }
+
             return CurrentData;
         }
 
@@ -150,6 +150,7 @@ namespace FakeEF.EFInterception
                     dbContext.Entry(item).State = EntityState.Deleted;
                 }
             }
+
             return CurrentData;
         }
 

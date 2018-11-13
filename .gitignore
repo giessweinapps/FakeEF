@@ -2,12 +2,14 @@
 # Diese .gitignore-Datei wurde von Microsoft(R) Visual Studio automatisch erstellt.
 ################################################################################
 
-/FakeEF/bin/Debug
-/FakeEF/obj/Debug
+/FakeEF/bin
+/FakeEF/obj
 /FakeEF/packages
-/FakeEF.Tests/bin/Debug
-/FakeEF.Tests/obj/Debug
+/FakeEF.Tests/bin
+/FakeEF.Tests/obj
 *.suo
 *.user
 /packages
 /FakeEF/*.nupkg
+/.vs
+/.vs

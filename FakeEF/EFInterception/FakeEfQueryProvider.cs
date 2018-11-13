@@ -1,15 +1,13 @@
-﻿using System;
-using System.Data.Entity;
+﻿using System.Data.Entity;
 using System.Linq;
 using System.Linq.Expressions;
-using FakeEF.Data;
 
 namespace FakeEF.EFInterception
 {
     public class FakeEfQueryProvider<T> : IQueryProvider where T : class, new()
     {
-        private readonly StubDbSet<T> stubDbSet;
         private readonly DbContext dbContext;
+        private readonly StubDbSet<T> stubDbSet;
 
         public FakeEfQueryProvider(StubDbSet<T> stubDbSet, DbContext dbContext)
         {
@@ -24,8 +22,7 @@ namespace FakeEF.EFInterception
 
         public IQueryable<TElement> CreateQuery<TElement>(Expression expression)
         {
-            var method = expression as MethodCallExpression;
-            if (method != null && method.Method.Name == "SelectMany")
+            if (expression is MethodCallExpression method && method.Method.Name == "SelectMany")
             {
                 foreach (var arg in method.Arguments.Skip(1))
                 {
@@ -39,9 +36,8 @@ namespace FakeEF.EFInterception
                     }
                 }
             }
-            var result = stubDbSet as IQueryable<TElement>;
-            if (result != null)
-                return result;
+
+
             return stubDbSet.CurrentData.AsQueryable().Provider.CreateQuery<TElement>(expression);
         }
 
@@ -62,7 +58,7 @@ namespace FakeEF.EFInterception
                     var member = operand?.Body as BinaryExpression;
                     if (member?.Left.NodeType == ExpressionType.Convert)
                     {
-                        var unary = ((UnaryExpression)member.Left);
+                        var unary = (UnaryExpression) member.Left;
                         var memberExpression = unary.Operand as MemberExpression;
                         var ex = memberExpression?.Expression as MemberExpression;
                         if (ex?.Member.Name != null)
@@ -86,6 +82,7 @@ namespace FakeEF.EFInterception
                     }
                 }
             }
+
             return stubDbSet.CurrentData.AsQueryable().Provider.Execute<TResult>(expression);
         }
     }

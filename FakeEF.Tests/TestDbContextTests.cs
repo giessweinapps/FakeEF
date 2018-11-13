@@ -45,6 +45,27 @@ namespace FakeEF.Tests
                 Assert.That(p.Addresses.Count, Is.EqualTo(1));
             }
         }
+        [Test]
+        public void EnsureOrderByAndWhereIsWorking()
+        {
+            using (var ctx = new MyTestDbContext())
+            {
+                ctx.SetupAsTestDbContext();
+                ctx.Persons.Add(new Person { Name = "C" });
+                ctx.Persons.Add(new Person { Name = "A" });
+                ctx.Persons.Add(new Person { Name = "B" });
+                ctx.SaveChanges();
+            }
+
+            using (var ctx = new MyTestDbContext())
+            {
+                ctx.SetupAsTestDbContext();
+                var p = ctx.Persons.OrderBy(x => x.Name).ToList();
+                Assert.That(p[0].Name, Is.EqualTo("A"));
+                Assert.That(p[1].Name, Is.EqualTo("B"));
+                Assert.That(p[2].Name, Is.EqualTo("C"));
+            }
+        }
 
         [Test]
         public void QueryTwoDifferentTables()
@@ -147,9 +168,9 @@ namespace FakeEF.Tests
                 ctx.SetupAsTestDbContext();
                 var adr = ctx.Persons
                     .AsNoTracking()
+                    .SelectMany(x => x.Addresses)
                     .Where(x => x.Id > 0)
                     .Where(x => x.Id < 1000)
-                    .SelectMany(x => x.Addresses)
                     .FirstOrDefault(x => x.Id == 2);
                 Assert.That(adr, Is.Not.Null);
             }

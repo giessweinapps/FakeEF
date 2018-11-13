@@ -1,7 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data;
+using System.Data.Common;
 using System.Data.Entity;
+using System.Data.Entity.Core.Common;
 using System.Data.Entity.Infrastructure;
+using System.Data.Entity.Infrastructure.Interception;
 using System.Data.Entity.Validation;
 using System.Linq;
 
@@ -12,7 +16,8 @@ namespace FakeEF.EFInterception
         
         public static void SetupAsTestDbContext<T>(this T context) where T : DbContext
         {
-            Database.SetInitializer<T>(null);
+            Database.SetInitializer(new NullDatabaseInitializer<T>());
+
             var allSaveables = new List<ISaveable>();
             foreach (var property in typeof (T).GetProperties())
             {
