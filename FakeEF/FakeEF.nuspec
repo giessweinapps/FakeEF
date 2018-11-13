@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
 	<metadata>
 		<id>FakeEF</id>
-		<version>1.0.39.0</version>
+		<version>1.0.40.0</version>
 		<title>FakeEF</title>
 		<authors>Giesswein Software-Solutions</authors>
 		<owners>Giesswein Software-Solutions</owners>
@@ -10,8 +10,8 @@
 		<description>Description</description>
 		<copyright>Copyright Giesswein Software-Solutions ©  2016</copyright>
 		<dependencies>
-			<dependency id="EntityFramework" version="6.1.3" />
-			<dependency id="Newtonsoft.Json" version="8.0.3" />
+			<dependency id="EntityFramework" version="6.2.0" />
+			<dependency id="Newtonsoft.Json" version="10.0.2" />
 		</dependencies>
 	</metadata>
 	<files>
