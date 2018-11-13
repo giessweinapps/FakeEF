@@ -68,20 +68,20 @@ namespace FakeEF.Data
             return manager;
         }
 
-        internal IEnumerable<T> LoadData<T>(DbContext context, bool proxyCreationEnabled, List<string> includes, bool asNoTracking) where T : class
+        internal IEnumerable<T> LoadData<T>(DbContext context, List<string> includes, bool asNoTracking) where T : class
         {
             var manager = GetSetData(typeof(T));
-            var data = CloneItems<T>(context, manager, proxyCreationEnabled, includes, asNoTracking);
+            var data = CloneItems<T>(context, manager, includes, asNoTracking);
             foreach (var item in data)
                 yield return item;
         }
 
 
-        private IEnumerable<T> CloneItems<T>(DbContext context, DbSetDataManager manager, bool proxyCreationEnabled, List<string> includes, bool asNoTracking) where T : class
+        private IEnumerable<T> CloneItems<T>(DbContext context, DbSetDataManager manager,List<string> includes, bool asNoTracking) where T : class
         {
             var data = manager.Data
                 .Select(x => (T)x.Entity)
-                .Select(x => Clone(x, proxyCreationEnabled, includes))
+                .Select(x => Clone(x,  includes))
                 .ToDictionary(k => manager.GetId(k), v => v);
 
             foreach (var item in data)
@@ -95,60 +95,35 @@ namespace FakeEF.Data
                     yield return existing[item.Key];
                 else
                 {
-                    if (!proxyCreationEnabled)
+                    var navigationProperties = item.Value.GetType()
+                        .GetProperties()
+                        .Where(x => (x.PropertyType.IsClass ||
+                                     x.PropertyType.IsInterface) && x.PropertyType != typeof(string))
+                        .ToList();
+                    foreach (var navProperty in navigationProperties)
                     {
-                        var navigationProperties = item.Value.GetType()
-                            .GetProperties()
-                            .Where(x => (x.PropertyType.IsClass ||
-                                         x.PropertyType.IsInterface) && x.PropertyType != typeof(string))
-                            .ToList();
-                        foreach (var nav in navigationProperties)
+                        if (IsGenericList(navProperty.PropertyType))
                         {
-                            if (includes.Any(x => x.Contains(nav.Name)))
+                            var list = navProperty.GetValue(item.Value) as IList;
+                            foreach (var listItem in list.OfType<object>().ToArray())
                             {
-                                continue;
-                            }
-                            if (IsGenericList(nav.PropertyType))
-                            {
-                                var defaultInstance = Activator.CreateInstance(typeof(T));
-                                nav.SetValue(item.Value, nav.GetValue(defaultInstance));
-                            }
-                            else
-                                nav.SetValue(item.Value, null);
-                        }
-                    }
-                    else
-                    {
-                        var navigationProperties = item.Value.GetType()
-                                    .GetProperties()
-                                    .Where(x => (x.PropertyType.IsClass ||
-                                                    x.PropertyType.IsInterface) && x.PropertyType != typeof(string))
-                                    .ToList();
-                        foreach (var navProperty in navigationProperties)
-                        {
-                            if (IsGenericList(navProperty.PropertyType))
-                            {
-                                var list = navProperty.GetValue(item.Value) as IList;
-                                foreach (var listItem in list.OfType<object>().ToArray())
-                                {
-                                    var alreadyLoaded = LookupIfExistInChangeTracker<T>(context, manager, listItem, listItem.GetType());
-                                    if (alreadyLoaded != null)
-                                    {
-                                        list.Remove(listItem);
-                                        list.Add(alreadyLoaded.Entity);
-                                    }
-                                }
-                                continue;
-                            }
-
-                            var currentValue = navProperty.GetValue(item.Value);
-                            if (currentValue != null)
-                            {
-                                var alreadyLoaded = LookupIfExistInChangeTracker<T>(context, manager, currentValue, navProperty.PropertyType);
+                                var alreadyLoaded = LookupIfExistInChangeTracker<T>(context, manager, listItem, listItem.GetType());
                                 if (alreadyLoaded != null)
                                 {
-                                    navProperty.SetValue(item.Value, alreadyLoaded.Entity);
+                                    list.Remove(listItem);
+                                    list.Add(alreadyLoaded.Entity);
                                 }
+                            }
+                            continue;
+                        }
+
+                        var currentValue = navProperty.GetValue(item.Value);
+                        if (currentValue != null)
+                        {
+                            var alreadyLoaded = LookupIfExistInChangeTracker<T>(context, manager, currentValue, navProperty.PropertyType);
+                            if (alreadyLoaded != null)
+                            {
+                                navProperty.SetValue(item.Value, alreadyLoaded.Entity);
                             }
                         }
                     }
@@ -196,32 +171,18 @@ namespace FakeEF.Data
             return false;
         }
 
-        internal T Clone<T>(T source, bool withProxy, List<string> includes)
+        internal T Clone<T>(T source,List<string> includes)
         {
-            if (withProxy)
+            var settings = new JsonSerializerSettings
             {
-                var settings = new JsonSerializerSettings
-                {
-                    ReferenceLoopHandling = ReferenceLoopHandling.Serialize,
-                    PreserveReferencesHandling = PreserveReferencesHandling.Objects,
-                    ContractResolver = new FakeEFJsonContractResolver(true, includes)
-                };
+                ReferenceLoopHandling = ReferenceLoopHandling.Serialize,
+                PreserveReferencesHandling = PreserveReferencesHandling.Objects,
+                ContractResolver = new FakeEFJsonContractResolver(true, includes)
+            };
 
-                var serialized = JsonConvert.SerializeObject(source, Formatting.None, settings);
-                var result = JsonConvert.DeserializeObject<T>(serialized, settings);
-                return result;
-            }
-            else
-            {
-                var settings = new JsonSerializerSettings
-                {
-                    ReferenceLoopHandling = ReferenceLoopHandling.Serialize,
-                    PreserveReferencesHandling = PreserveReferencesHandling.Objects,
-                    ContractResolver = new FakeEFJsonContractResolver(false, includes)
-                };
-                var serialized = JsonConvert.SerializeObject(source, Formatting.None, settings);
-                return JsonConvert.DeserializeObject<T>(serialized, settings);
-            }
+            var serialized = JsonConvert.SerializeObject(source, Formatting.None, settings);
+            var result = JsonConvert.DeserializeObject<T>(serialized, settings);
+            return result;
         }
 
         public void Clear()

@@ -123,8 +123,7 @@ namespace FakeEF.EFInterception
 
         private IEnumerable<T> LoadContextData()
         {
-            return InMemoryDatabase.Instance.LoadData<T>(dbContext, dbContext.Configuration.ProxyCreationEnabled,
-                includes, asNoTracking);
+            return InMemoryDatabase.Instance.LoadData<T>(dbContext, includes, asNoTracking);
         }
 
         public override IEnumerable<T> AddRange(IEnumerable<T> entities)
